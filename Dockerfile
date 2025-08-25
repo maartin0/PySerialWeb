@@ -18,7 +18,7 @@ RUN cd /emsdk && \
     ./emsdk install ${PYODIDE_EMSCRIPTEN_VERSION} && \
     ./emsdk activate ${PYODIDE_EMSCRIPTEN_VERSION} && \
     mkdir -p /app && cd /app && \
-    . /emsdk/emsdk_env.sh && pyodide xbuildenv install --download
+    . /emsdk/emsdk_env.sh && python -m pyodide xbuildenv install --download
 
 RUN echo '#!/bin/bash\nsource /emsdk/emsdk_env.sh > /dev/null\nexec "$@"' > /usr/local/bin/emsdk_shell && \
     chmod +x /usr/local/bin/emsdk_shell
@@ -30,4 +30,4 @@ RUN which emcc
 # Build project
 WORKDIR /app
 COPY . .
-RUN pyodide build -o ./dist
+RUN python -m pyodide build -o ./dist

@@ -19,7 +19,7 @@ RUN pip install --no-cache-dir -r requirements.txt && \
     ./emsdk install ${PYODIDE_EMSCRIPTEN_VERSION} && \
     ./emsdk activate ${PYODIDE_EMSCRIPTEN_VERSION} && \
     mkdir -p /app && cd /app && \
-    . /emsdk/emsdk_env.sh && pyodide xbuildenv install --download
+    . /emsdk/emsdk_env.sh
 
 RUN echo '#!/bin/bash\nsource /emsdk/emsdk_env.sh > /dev/null\nexec "$@"' > /usr/local/bin/emsdk_shell && \
     chmod +x /usr/local/bin/emsdk_shell

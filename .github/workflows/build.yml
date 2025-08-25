@@ -36,14 +36,23 @@ jobs:
           load: true
           tags: gha-app-build.py${{ matrix.python-version }}
 
-      - name: Extract wheel from the image
+      - name: Extract wheel(s) from image
         run: |
           CONTAINER_ID=$(docker create gha-app-build.py${{ matrix.python-version }})
           mkdir -p wheels
           docker cp $CONTAINER_ID:/app/dist/. wheels/
           docker rm $CONTAINER_ID
 
-      - name: Upload wheel as workflow artifact
+      - name: Rename wheel(s) to have exact python version
+        run: |
+          # e.g. rename serial-0.0.1-py3-none-any.whl to serial-0.0.1-py3.11-none-any.whl
+          for file in wheels/*-py3-none-any.whl; do
+            new_name="${file/-py3-/-py${{ matrix.python-version }}-}"
+            echo "Renaming '$file' to '$new_name'"
+            mv "$file" "$new_name"
+          done
+
+      - name: Upload wheel(s) as workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: wheel-py${{ matrix.python-version }}
@@ -64,7 +73,12 @@ jobs:
         with:
           path: wheels/
 
+      - name: Flatten artifacts
+        run: |
+          find wheels -type f -name "*.whl" -exec mv {} wheels/ \;
+          find wheels -type d -name "wheel-py*" -exec rm -r {} \;
+
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          files: wheels/**/*.whl
+          files: wheels/*.whl

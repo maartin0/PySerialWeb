@@ -76,7 +76,6 @@ jobs:
       - name: Flatten artifacts
         run: |
           find wheels -type f -name "*.whl" -exec mv {} wheels/ \;
-          find wheels -type d -name "wheel-py*" -exec rm -r {} \;
 
       - name: Create release
         uses: softprops/action-gh-release@v2

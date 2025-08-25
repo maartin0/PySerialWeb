@@ -1,0 +1,67 @@
+name: Build wheels using cached Dockerfile and create package (if tagged)
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-wheels:
+    name: Build and upload wheels as artifacts
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build docker image
+        id: push
+        uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
+        with:
+          context: .
+          build-args: |
+            PYTHON_VERSION=${{ matrix.python-version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          load: true
+          tags: gha-app-build.py${{ matrix.python-version }}
+
+      - name: Extract wheel from the image
+        run: |
+          CONTAINER_ID=$(docker create gha-app-build.py${{ matrix.python-version }})
+          mkdir -p wheels
+          docker cp $CONTAINER_ID:/app/dist/. wheels/
+          docker rm $CONTAINER_ID
+
+      - name: Upload wheel as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-py${{ matrix.python-version }}
+          path: wheels/*.whl
+          retention-days: 1
+
+  create-release:
+    name: Create release
+    needs: build-wheels
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v5
+        with:
+          path: wheels/
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: wheels/**/*.whl

@@ -1,0 +1,12 @@
+[project]
+name = "serial"
+version = "0.0.1"
+dependencies = []
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Framework :: Pyodide",
+]
+
+[build-system]
+requires = ["setuptools", "pyodide-build"]
+build-backend = "setuptools.build_meta"

@@ -1,0 +1,5 @@
+build
+pyodide-build
+pyodide-py
+micropip
+-e ./stubs

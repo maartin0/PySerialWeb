@@ -1,11 +1,9 @@
-import ctypes
-import time
 import asyncio
 import js
-from pyodide.ffi import JsTypedArray
 
-from collections.abc import Buffer
-from typing import cast
+import pyodide.ffi
+import collections.abc
+import typing
 
 from .serialutil import (
     SerialBase,
@@ -43,7 +41,7 @@ class Serial(SerialBase):
         self.is_open = True
 
     def _reconfigure_port(self):
-        self._port_handle = cast(
+        self._port_handle = typing.cast(
             js.SerialPort, js.evalOnMain("navigator.serial.requestPort()")
         )
 
@@ -88,18 +86,18 @@ class Serial(SerialBase):
         """
         return asyncio.run(self.read_async(size))
 
-    async def write_async(self, data: Buffer) -> int:
+    async def write_async(self, data: collections.abc.Buffer) -> int:
         if not self.is_open or not self._port_handle:
             raise PortNotOpenError()
         bytes = to_bytes(data)
         if not bytes:
             return 0
         writer = self._port_handle.writable.getWriter()
-        await writer.write(JsTypedArray(bytes))
+        await writer.write(pyodide.ffi.JsTypedArray(bytes))
         writer.releaseLock()
         return len(bytes)
 
-    def write(self, data: Buffer) -> int:
+    def write(self, data: collections.abc.Buffer) -> int:
         """Output the given byte string over the serial port."""
         return asyncio.run(self.write_async(data))
 

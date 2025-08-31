@@ -2,7 +2,7 @@ name: Build wheels using docker and create package
 on:
   push:
     tags:
-      - "v*"
+      - "*"
 
 jobs:
   build-wheels:

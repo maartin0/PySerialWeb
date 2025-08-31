@@ -2,7 +2,6 @@ import asyncio
 import js
 
 import pyodide.ffi
-import collections.abc
 import typing
 
 from .serialutil import (
@@ -10,7 +9,6 @@ from .serialutil import (
     to_bytes,
     PortNotOpenError,
 )
-
 
 class Serial(SerialBase):
     """Serial port implementation for Win32 based on ctypes."""
@@ -86,7 +84,7 @@ class Serial(SerialBase):
         """
         return asyncio.run(self.read_async(size))
 
-    async def write_async(self, data: collections.abc.Buffer) -> int:
+    async def write_async(self, data) -> int:
         if not self.is_open or not self._port_handle:
             raise PortNotOpenError()
         bytes = to_bytes(data)
@@ -97,7 +95,7 @@ class Serial(SerialBase):
         writer.releaseLock()
         return len(bytes)
 
-    def write(self, data: collections.abc.Buffer) -> int:
+    def write(self, data) -> int:
         """Output the given byte string over the serial port."""
         return asyncio.run(self.write_async(data))
 

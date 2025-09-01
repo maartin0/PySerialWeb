@@ -1,11 +1,8 @@
 [project]
 name = "pyserialweb"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = []
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Framework :: Pyodide",
-]
+classifiers = ["Programming Language :: Python :: 3", "Framework :: Pyodide"]
 
 [build-system]
 requires = ["setuptools", "pyodide-build"]

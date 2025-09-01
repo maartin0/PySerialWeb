@@ -6,3 +6,4 @@ if sys.platform != "emscripten":
 
 
 from .serialweb import Serial
+from .serialutil import *

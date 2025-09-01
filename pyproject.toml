@@ -1,6 +1,6 @@
 [project]
 name = "pyserialweb"
-version = "0.0.4"
+version = "0.0.5"
 dependencies = []
 classifiers = ["Programming Language :: Python :: 3", "Framework :: Pyodide"]
 

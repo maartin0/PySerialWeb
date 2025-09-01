@@ -10,8 +10,9 @@ from .serialutil import (
     PortNotOpenError,
 )
 
+
 class Serial(SerialBase):
-    """Serial port implementation for Win32 based on ctypes."""
+    """Serial port implementation for Emscripten based on the Web Serial API."""
 
     def __init__(self, *args, **kwargs):
         self._port_handle = None
@@ -38,10 +39,13 @@ class Serial(SerialBase):
         )
         self.is_open = True
 
-    def _reconfigure_port(self):
+    async def _reconfigure_port_async(self):
         self._port_handle = typing.cast(
-            js.SerialPort, js.evalOnMain("navigator.serial.requestPort()")
+            js.SerialPort, await js.navigator.serial.requestPort()
         )
+
+    def _reconfigure_port(self):
+        asyncio.run(self._reconfigure_port_async())
 
     def __del__(self):
         self.close()

@@ -11,49 +11,79 @@ from .serialutil import (
 )
 
 
+def run_sync(js_coro):
+    if hasattr(pyodide.ffi, "to_sync"):
+        return pyodide.ffi.to_sync(js_coro)  # type: ignore
+    else:
+        js.console.log(f"Running {js_coro}")
+        return js_coro.syncify()  # type: ignore
+
+
+def convert_dict_to_js(inp: dict) -> js.Object:
+    return typing.cast(
+        js.Object, js.Object.fromEntries(pyodide.ffi.to_js(inp))
+    )
+
+
 class Serial(SerialBase):
     """Serial port implementation for Emscripten based on the Web Serial API."""
 
     def __init__(self, *args, **kwargs):
-        self._port_handle = None
-        self._overlapped_read = None
-        self._overlapped_write = None
         super(Serial, self).__init__(*args, **kwargs)
 
     def open(self):
-        if not self._port_handle:
-            self._reconfigure_port()
-        if not self._port_handle:
-            return
-        if not self.baudrate:
-            self.baudrate = 9600
-        self._port_handle.open(
-            js.SerialOptions(
-                baudRate=self.baudrate,
-                dataBits=None,
-                parity=None,
-                bufferSize=None,
-                flowControl=None,
-                stopBits=None,
+        js.console.debug("start open")
+        if not hasattr(js, "_portHandle"):
+            js.console.log("reconfigure port")
+            js._portHandle = typing.cast(
+                js.SerialPort, run_sync(js.navigator.serial.requestPort())
             )
-        )
+            js.console.log(js._portHandle)
+        elif self.is_open:
+            js.console.debug("already open internally, skipping")
+            return
+        js.console.debug("finished open checks")
+        if not hasattr(js, "_portHandle"):
+            raise RuntimeError("No port selected!")
+        if not self.baudrate:
+            js.console.debug("setting baudrate to 9600")
+            self.baudrate = 9600
+        try:
+            js.console.debug("trying to open port")
+            run_sync(
+                js._portHandle.open(
+                    convert_dict_to_js(
+                        {
+                            "baudRate": self.baudrate,
+                            "dataBits": None,
+                            "parity": None,
+                            "bufferSize": None,
+                            "flowControl": None,
+                            "stopBits": None,
+                        }
+                    )
+                )
+            )
+        except Exception as e:
+            js.console.debug("caught exception in open")
+            if "already open" in str(e):
+                js.console.log("Port was already open, skipping")
+            else:
+                e.add_note("Error while trying open port")
+                js.console.error(e)
+                raise e
         self.is_open = True
-
-    async def _reconfigure_port_async(self):
-        self._port_handle = typing.cast(
-            js.SerialPort, await js.navigator.serial.requestPort()
-        )
-
-    def _reconfigure_port(self):
-        asyncio.run(self._reconfigure_port_async())
+        js.console.debug("finish open")
 
     def __del__(self):
         self.close()
 
     def close(self):
-        if not self._port_handle:
-            return
-        self._port_handle.close()
+        js.console.debug("close stub")
+        pass
+        # if not self.is_open:
+        #     return
+        # run_sync(js._portHandle.close())
 
     #  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
 
@@ -62,52 +92,59 @@ class Serial(SerialBase):
         # info not provided by WritableStream since the queue implementation can be browser-specific
         return 0
 
-    async def read_async(self, size=1) -> bytes:
-        if not self.is_open or not self._port_handle:
-            raise PortNotOpenError()
-        if size <= 0:
-            return bytes()
-        reader = self._port_handle.readable.getReader()
-        buffer = bytearray()
-        while len(buffer) < size:
-            result = await reader.read()
-            value = result["value"]
-            if not value:
-                break
-            buffer.extend(value)
-            if result["done"]:
-                break
-        reader.releaseLock()
-        return buffer
-
     def read(self, size=1) -> bytes:
         """\
         Read size bytes from the serial port. If a timeout is set it may
         return less characters as requested. With no timeout it will block
         until the requested number of bytes is read.
         """
-        return asyncio.run(self.read_async(size))
+        js.console.debug(f"start read, size={size}")
+        if not self.is_open:
+            raise PortNotOpenError()
+        if size <= 0:
+            return bytes()
+        reader = js._portHandle.readable.getReader()
+        buffer = bytearray()
+        while len(buffer) < size:
+            result = run_sync(reader.read())
+            js.console.debug("Got data", result)
+            value = result.value
+            if not value:
+                break
+            buffer.extend(value)
+            if result.done:
+                break
+        reader.releaseLock()
+        js.console.debug("finish read")
+        return buffer
 
-    async def write_async(self, data) -> int:
-        if not self.is_open or not self._port_handle:
+    def write(self, data) -> int:
+        """Output the given byte string over the serial port."""
+        js.console.debug("start write")
+        if not self.is_open:
             raise PortNotOpenError()
         bytes = to_bytes(data)
         if not bytes:
             return 0
-        writer = self._port_handle.writable.getWriter()
-        await writer.write(pyodide.ffi.JsTypedArray(bytes))
+        writer = js._portHandle.writable.getWriter()
+        run_sync(
+            writer.write(
+                typing.cast(
+                    pyodide.ffi.JsTypedArray,
+                    js.Uint8Array.new(pyodide.ffi.to_js(bytes)),
+                )
+            )
+        )
         writer.releaseLock()
+        js.console.debug("finish write")
         return len(bytes)
-
-    def write(self, data) -> int:
-        """Output the given byte string over the serial port."""
-        return asyncio.run(self.write_async(data))
 
     def flush(self):
         """\
         Flush of file like objects. In this case, wait until all data
         is written.
         """
+        js.console.debug("flush")
         pass
 
     def reset_input_buffer(self):
